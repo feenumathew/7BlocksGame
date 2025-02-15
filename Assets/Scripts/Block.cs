@@ -10,7 +10,7 @@ public class Block : MonoBehaviour
     private TextMeshPro numberText;
 
     private SpriteRenderer spriteRenderer;
-
+    public Animator anim;
    
     public int number;
 
@@ -111,6 +111,7 @@ public class Block : MonoBehaviour
         }
         else if(Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.KeypadEnter) )
         {
+           
             MoveDown();
         }
     }
@@ -124,9 +125,9 @@ public class Block : MonoBehaviour
     // Move the block down by one unit.
     void MoveDown()
     {
-
+        anim.SetTrigger("Bounce" );
         Vector3 finalPos = transform.position;
-
+        
         finalPos = new Vector3(transform.position.x,gridManager.gridHeight-1,0);
 
         while (IsValidPosition(finalPos))
@@ -138,6 +139,7 @@ public class Block : MonoBehaviour
         transform.position = finalPos;
         gridManager.AddToGrid(transform);
         blockPlaced = true;
+       
        
     }
 
