@@ -90,13 +90,40 @@ public class Block : MonoBehaviour
     }
    
 
-    void Update()
+   void Update()
+{
+    if (blockPlaced)
+        return;
+
+    // If running on mobile, process touch input for horizontal dragging.
+    if (Input.touchCount > 0)
     {
-        if(blockPlaced)
-            return;
+        Touch touch = Input.GetTouch(0);
 
-
-        // Allow horizontal movement.
+        // When the finger moves or is stationary, update the block's x-position.
+        if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
+        {
+            // Convert the touch position from screen space to world space.
+            Vector2 touchWorldPos = Camera.main.ScreenToWorldPoint(touch.position);
+            // Round the x-coordinate to snap to grid columns.
+            float targetX = Mathf.Round(touchWorldPos.x);
+            // Clamp the target x to valid grid columns.
+            targetX = Mathf.Clamp(targetX, 0, gridManager.gridWidth - 1);
+            // Update the block's horizontal position while preserving its current y.
+            transform.position = new Vector3(targetX, transform.position.y, transform.position.z);
+        }
+        
+        // Optionally, you can trigger a drop if the touch ends quickly (a tap).
+        if (touch.phase == TouchPhase.Ended)
+        {
+            // For example, if the finger didn’t move much, treat it as a drop command.
+            // (You can implement a tap-detection threshold if desired.)
+            MoveDown();
+        }
+    }
+    // Otherwise, use keyboard input (useful for testing in the Editor).
+    else
+    {
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
             transform.position += new Vector3(-1, 0, 0);
@@ -109,12 +136,13 @@ public class Block : MonoBehaviour
             if (!IsValidCol())
                 transform.position += new Vector3(-1, 0, 0);
         }
-        else if(Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.KeypadEnter) )
+        else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
         {
-           
             MoveDown();
         }
     }
+}
+
 
     bool IsValidCol()
     {
@@ -125,7 +153,7 @@ public class Block : MonoBehaviour
     // Move the block down by one unit.
     void MoveDown()
     {
-        anim.SetTrigger("Bounce" );
+        anim.SetTrigger("Bounce");
         Vector3 finalPos = transform.position;
         
         finalPos = new Vector3(transform.position.x,gridManager.gridHeight-1,0);
@@ -151,7 +179,7 @@ public class Block : MonoBehaviour
             return false;
 
         // Check if the grid cell is already occupied.
-        if (gridManager.grid[(int)pos.x, (int)pos.y] != null)
+        if (gridManager.gridSquare[(int)pos.x, (int)pos.y] != null)
             return false;
 
         return true;

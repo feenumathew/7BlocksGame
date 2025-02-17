@@ -9,7 +9,7 @@ public class GridManager : MonoBehaviour
 {
     public int gridWidth = 7;
     public int gridHeight = 7;
-    public Transform[,] grid;
+    public Transform[,] gridSquare;
 
     public Transform gridBg;
     public GameObject highLightBG;
@@ -20,14 +20,14 @@ public class GridManager : MonoBehaviour
 
     private BlockSpawner blockSpawner;
 
-    public List<BlockHighLight> blockHighLights;
+    private List<BlockHighLight> blockHighLights = new List<BlockHighLight>();
 
 
 
     void Start()
     {
         blockSpawner = FindObjectOfType<BlockSpawner>();
-        grid = new Transform[gridWidth, gridHeight];
+        gridSquare = new Transform[gridWidth, gridHeight];
         CreateVisibleGrid();
         blockSpawner.CreateSpawnPoints(gridWidth, gridHeight);
         gridBg.localScale = new Vector3(gridWidth * 1.05f, gridHeight * 1.05f, 1);
@@ -63,7 +63,7 @@ public class GridManager : MonoBehaviour
     public void AddToGrid(Transform block)
     {
         Vector2 pos = RoundVector2(block.position);
-        grid[(int)pos.x, (int)pos.y] = block;
+        gridSquare[(int)pos.x, (int)pos.y] = block;
         CheckAndClear();
     }
 
@@ -75,21 +75,19 @@ public class GridManager : MonoBehaviour
         {
             for (int y = 0; y < gridHeight; y++)
             {
-                if (grid[x, y] != null)
+                if (gridSquare[x, y] != null)
                 {
-                    Block blockComponent = grid[x, y].GetComponent<Block>();
+                    Block blockComponent = gridSquare[x, y].GetComponent<Block>();
                     int horizontalUBBlocks = CountHorizontalUB(x, y);
                     int verticalUBBLocks = CountVerticalUB(x, y);
                     if (blockComponent.number == horizontalUBBlocks)
                     {
-
-                        blocksToClear.Add(grid[x, y]);
-                        
+                        blocksToClear.Add(gridSquare[x, y]);
                         AddHorizontalUBHighlight(x, y, horizontalUBBlocks);
                     }
                     else if( blockComponent.number == verticalUBBLocks)
                     {
-                        blocksToClear.Add(grid[x, y]);
+                        blocksToClear.Add(gridSquare[x, y]);
                         AddVerticalUBHighlight(x, y, verticalUBBLocks);
                     }
                 }
@@ -113,7 +111,7 @@ public class GridManager : MonoBehaviour
         int startIndex ;
         for (startIndex = x; startIndex >= 0; startIndex--)
         {
-            if (grid[startIndex,y] == null)
+            if (gridSquare[startIndex,y] == null)
                 break;
         }
         startIndex++;
@@ -131,10 +129,10 @@ public class GridManager : MonoBehaviour
    void AddVerticalUBHighlight(int x, int y, int verticalUBCount)
     {
          Vector2 center = new Vector2(x,y);
-        int startIndex ;
+        int startIndex;
         for (startIndex = y; startIndex >= 0; startIndex--)
         {
-            if (grid[x,startIndex] == null)
+            if (gridSquare[x,startIndex] == null)
                 break;
         }
         startIndex++;
@@ -157,7 +155,7 @@ public class GridManager : MonoBehaviour
         foreach (Transform t in blocksToClear)
         {
             Vector2 pos = RoundVector2(t.position);
-            grid[(int)pos.x, (int)pos.y] = null;
+            gridSquare[(int)pos.x, (int)pos.y] = null;
             Destroy(t.gameObject);
         }
         foreach(BlockHighLight blockHighLight in blockHighLights)
@@ -173,13 +171,13 @@ public class GridManager : MonoBehaviour
         int count = 0;
         for (int i = x; i >= 0; i--)
         {
-            if (grid[i, y] == null)
+            if (gridSquare[i, y] == null)
                 break;
             count++;
         }
         for (int i = x + 1; i < gridWidth; i++)
         {
-            if (grid[i, y] == null)
+            if (gridSquare[i, y] == null)
                 break;
             count++;
         }
@@ -191,13 +189,13 @@ public class GridManager : MonoBehaviour
         int count = 0;
         for (int i = y; i >= 0; i--)
         {
-            if (grid[x, i] == null)
+            if (gridSquare[x, i] == null)
                 break;
             count++;
         }
         for (int i = y + 1; i < gridHeight; i++)
         {
-            if (grid[x, i] == null)
+            if (gridSquare[x, i] == null)
                 break;
             count++;
         }
@@ -215,12 +213,12 @@ public class GridManager : MonoBehaviour
             {
                 for (int y = 1; y < gridHeight; y++)
                 {
-                    if (grid[x, y] != null && grid[x, y - 1] == null)
+                    if (gridSquare[x, y] != null && gridSquare[x, y - 1] == null)
                     {
                         gridUpdate = true;
-                        grid[x, y - 1] = grid[x, y];
-                        grid[x, y] = null;
-                        grid[x, y - 1].position += new Vector3(0, -1, 0);
+                        gridSquare[x, y - 1] = gridSquare[x, y];
+                        gridSquare[x, y] = null;
+                        gridSquare[x, y - 1].position += new Vector3(0, -1, 0);
                     }
                 }
             }
