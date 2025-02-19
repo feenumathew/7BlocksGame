@@ -26,7 +26,7 @@ public class GridManager : MonoBehaviour
 
     void Start()
     {
-        blockSpawner = FindObjectOfType<BlockSpawner>();
+        blockSpawner = FindFirstObjectByType<BlockSpawner>();
         gridSquare = new Transform[gridWidth, gridHeight];
         CreateVisibleGrid();
         blockSpawner.CreateSpawnPoints(gridWidth, gridHeight);

@@ -7,14 +7,25 @@ public class CameraController : MonoBehaviour
     private Camera cam;
     float refAspectRatio = .56f;//for 1920*1080 size
 
-    // Start is called before the first frame update
-    void Update()
+    private GridManager gridManager;
+
+    void Start()
     {
         cam = GetComponent<Camera>();
-        float camSize = refAspectRatio/cam.aspect*1f*8f;
-        if(camSize>8)
+        gridManager = FindFirstObjectByType<GridManager>();
+    }
+
+    void Update()
+    {
+       
+        float camSize = refAspectRatio / cam.aspect * 1f * 8f;
+        if (camSize > 8)
             cam.orthographicSize = camSize;
-    
+
+
+        cam.orthographicSize = Mathf.Max(gridManager.gridWidth / (2 * cam.aspect),gridManager.gridHeight / 2) + 2f;
+
+
     }
 
 }

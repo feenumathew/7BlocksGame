@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using System.Collections;
 
 public class Block : MonoBehaviour
 {
@@ -153,7 +154,8 @@ public class Block : MonoBehaviour
     // Move the block down by one unit.
     void MoveDown()
     {
-        anim.SetTrigger("Bounce");
+        blockPlaced = true;
+        //
         Vector3 finalPos = transform.position;
         
         finalPos = new Vector3(transform.position.x,gridManager.gridHeight-1,0);
@@ -164,11 +166,26 @@ public class Block : MonoBehaviour
         }
 
         finalPos += new Vector3(0, 1, 0);
+        StartCoroutine(BlockPlacing(finalPos));
+       
+    }
+
+    IEnumerator BlockPlacing(Vector3 finalPos)
+    {
+        float t=0;
+        Vector3 initPos = transform.position;
+        float distance = initPos.y - finalPos.y;
+        Debug.Log("distance"+distance);
+        while(t<1)
+        {
+            t += Time.deltaTime*2f*(9f/distance);
+            transform.position = Vector3.Lerp(initPos,finalPos,t); 
+            yield return null;
+        }
         transform.position = finalPos;
         gridManager.AddToGrid(transform);
-        blockPlaced = true;
-       
-       
+        
+        anim.SetTrigger("Bounce");
     }
 
     // Check if the block is in a valid position (inside the grid and not overlapping another block).
