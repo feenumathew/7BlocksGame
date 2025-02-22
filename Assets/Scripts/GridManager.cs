@@ -1,19 +1,21 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using DG.Tweening;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
 
 public class GridManager : MonoBehaviour
 {
+    public AudioSource audio;
     public int gridWidth = 7;
     public int gridHeight = 7;
     public Transform[,] gridSquare;
 
     public Transform gridBg;
     public GameObject highLightBG;
-
+    public DOTweenAnimation Tween;
 
     // New: Reference to your grid cell prefab.
     public GameObject gridCellPrefab;
@@ -69,6 +71,7 @@ public class GridManager : MonoBehaviour
 
     public void CheckAndClear()
     {
+       
         List<Transform> blocksToClear = new List<Transform>();
 
         for (int x = 0; x < gridWidth; x++)
@@ -97,6 +100,8 @@ public class GridManager : MonoBehaviour
         if (blocksToClear.Count > 0)
         {
             StartCoroutine(ClearCoRo(blocksToClear));
+            audio.Play();
+            Tween.DORestart();
         }
         else
         {

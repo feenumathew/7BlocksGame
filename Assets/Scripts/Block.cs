@@ -16,6 +16,7 @@ public class Block : MonoBehaviour
     public int number;
 
     public bool blockPlaced = false;
+    public AudioSource audio;
 
 
     void Setup()
@@ -154,6 +155,7 @@ public class Block : MonoBehaviour
     // Move the block down by one unit.
     void MoveDown()
     {
+        audio.Play();
         blockPlaced = true;
         //
         Vector3 finalPos = transform.position;
