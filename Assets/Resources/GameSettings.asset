@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: GameSettings
   m_EditorClassIdentifier: 
   gridSize: 7
-  spawnPointVerticalOffsetUnits: 2
-  bottomWaterSpawnOffsetUnits: 1
-  levelIncreaseGap: 10
+  blockSpawnVerticalOffsetInUnits: 2
+  waterBlockSpawnVerticalOffsetInUnits: 1
+  levelIncreaseGap: 7
   blockClearBasePoints: 5
   blockClearScoreMultiplier: 2
+  blockMoveUpSpeed: 2
   blockFallSpeedInit: 30
   blockFallSpeedNormal: 15

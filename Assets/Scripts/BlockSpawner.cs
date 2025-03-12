@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,7 +11,7 @@ public class BlockSpawner : MonoBehaviour
     public Transform top;
     public List<GridCell> topSpawnPoints;    // spawnPoints positioned at the top-center of your grid.
 
-    public List<GridCell> bottomSpawnPoints;  
+    public List<GridCell> bottomSpawnPoints;
     public int blockSpawnCount = 0;
 
     private GridManager gridManager;
@@ -30,7 +31,7 @@ public class BlockSpawner : MonoBehaviour
 
     public void SetupSpawnPoints()
     {
-        for (int i = 0, j = height + GameSettings.Instance.spawnPointVerticalOffsetUnits - 1; i < width; i++)
+        for (int i = 0, j = height + GameSettings.Instance.blockSpawnVerticalOffsetInUnits - 1; i < width; i++)
         {
             topSpawnPoints.Add(gridManager.gridCells[i, j]);
         }
@@ -42,30 +43,46 @@ public class BlockSpawner : MonoBehaviour
     // Call this method to spawn a new block.
 
 
+
     public void StartSpawningBlock()
     {
-        blockSpawnCount++;
+        StartCoroutine(BlockSpawningLoop());
+    }
 
-        if (blockSpawnCount % GameSettings.Instance.levelIncreaseGap == 0)
+    IEnumerator BlockSpawningLoop()
+    {
+        while (true)
         {
-            GameManager.Instance.IncreaseLevel();
-            SpawnBottomWaterBlocks();
-            gridManager.MoveAllBlocksUp();
-        }
-        else
-        {
-            if(gridManager.IsTopRowFull())
+            yield return new WaitWhile(() => (gridManager.gridState == GridState.InProcess));
+
+            if (gridManager.IsTopRowFull())
             {
                 GameManager.Instance.GameOver();
+                yield break;
+            }
+
+            blockSpawnCount++;
+
+            if (blockSpawnCount % (GameSettings.Instance.levelIncreaseGap+1) == 0)
+            {
+
+                GameManager.Instance.IncreaseLevel();
+                SpawnBottomWaterBlocks();
+                gridManager.MoveAllBlocksUp();
+                gridManager.gridState = GridState.InProcess;
+                yield return new WaitWhile(() => (gridManager.gridState == GridState.InProcess));
+                SpawnBlock();
+
             }
             else
             {
                 SpawnBlock();
             }
         }
-
-
     }
+
+
+
 
     void SpawnBottomWaterBlocks()
     {
@@ -81,6 +98,7 @@ public class BlockSpawner : MonoBehaviour
 
     private void SpawnBlock()
     {
+        gridManager.gridState = GridState.InProcess;
         int r = Helper.GenerateWeightedRandom("RandomSpawnPosition", 0, topSpawnPoints.Count - 1);
         int blockNum = Helper.GenerateWeightedRandom("RandomBlockNumberWithWater", 0, GameSettings.Instance.gridSize);
         GridCell initialCell = topSpawnPoints[r];

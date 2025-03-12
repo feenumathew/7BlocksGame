@@ -1,33 +1,24 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using DG.Tweening;
-using Unity.Mathematics;
-using UnityEditor;
 using UnityEngine;
 
 public enum GridState
 {
     Ready,
-    BlockMoving,
-    Clearing  
+    InProcess  
 }
 
 public class GridManager : MonoBehaviour
 {
     public int gridWidth;
     public int gridHeight;
-
     public TwoKeyDictionary<int, int, GridCell> gridCells = new TwoKeyDictionary<int, int, GridCell>();
-
-    public Transform gridBg;
     public GameObject highLightBG;
-
     public GameObject gridCellPrefab;
 
-
+    public GridState gridState = GridState.Ready;
     private BlockSpawner blockSpawner;
-
     private List<BlockHighLight> blockHighLights = new List<BlockHighLight>();
 
     private int successiveClears = 0;
@@ -44,12 +35,12 @@ public class GridManager : MonoBehaviour
         gridHeight = gridWidth = GameSettings.Instance.gridSize;
 
         CreateGrid(0, gridHeight, 0, gridWidth); //creating playarea grid
-        CreateGrid(gridHeight+GameSettings.Instance.spawnPointVerticalOffsetUnits-1,1, 0, gridWidth, true); //creating spawn points grid
-        CreateGrid(gridHeight,GameSettings.Instance.spawnPointVerticalOffsetUnits-1,0,gridWidth,false); //creating top inbetween invisible grids
+        CreateGrid(gridHeight+GameSettings.Instance.blockSpawnVerticalOffsetInUnits-1,1, 0, gridWidth, true); //creating spawn points grid
+        CreateGrid(gridHeight,GameSettings.Instance.blockSpawnVerticalOffsetInUnits-1,0,gridWidth,false); //creating top inbetween invisible grids
         CreateGrid(-1 ,1, 0, gridWidth,false); //creating bottom water grid
 
         blockSpawner.SetupSpawnPoints();
-        gridBg.localScale = new Vector3(gridWidth * 1.05f, gridHeight * 1.05f, 1);
+       
     }
 
 
@@ -141,7 +132,7 @@ public class GridManager : MonoBehaviour
         else
         {
             successiveClears = 0;
-            blockSpawner.StartSpawningBlock();
+            gridState = GridState.Ready;
         }
     }
 
@@ -317,6 +308,7 @@ public class GridManager : MonoBehaviour
 
     public void MoveAllBlocksUp()
     {
+
         StartCoroutine(MoveAllBlocksUpCoRo());
     }
 
@@ -324,23 +316,52 @@ public class GridManager : MonoBehaviour
     {
         yield return new WaitForSeconds(.2f);
 
+        float t = 0;
+
+        List<(Block,GridCell)> allMovableBlocks =  new List<(Block,GridCell)>();
+
+        //adding all blocks inside grid
         for (int x = 0; x < gridWidth; x++)
         {
-            for (int y = gridHeight - 1; y >= -1; y--)
+            for (int y = gridHeight - 1; y >= 0; y--)
             {
                 if (gridCells[x, y].isOccupied)
                 {
-                    gridCells[x, y].block.MoveBlock(gridCells[x, y + 1], 2f);
+                    allMovableBlocks.Add((gridCells[x, y].block,gridCells[x, y + 1]));
                 }
             }
         }
-        yield return new WaitForSeconds( 1/2f);
+
+        //adding waterblocks
+
+        for (int x = 0; x < gridWidth; x++)
+        {
+                int y = 0 - GameSettings.Instance.waterBlockSpawnVerticalOffsetInUnits;
+                if (gridCells[x, y].isOccupied)
+                {
+                    allMovableBlocks.Add((gridCells[x, y].block,gridCells[x, y + GameSettings.Instance.waterBlockSpawnVerticalOffsetInUnits ]));
+                }
+        }
+
+        int blockCount = allMovableBlocks.Count;
+
+        foreach((Block,GridCell) blockGridCellTuple in allMovableBlocks)
+        {
+            blockGridCellTuple.Item1.MoveBlock(blockGridCellTuple.Item2,GameSettings.Instance.blockMoveUpSpeed,()=>{blockCount--;});
+        }
+
+        while(blockCount>0)
+            yield return null;
+
+
         if(IsAnyBlocksOutOfGrid())
             GameManager.Instance.GameOver();
         else
+        {
             CheckAndClear();
+        }
     }
-
+    
 }
 
 

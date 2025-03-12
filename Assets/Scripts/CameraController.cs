@@ -31,6 +31,8 @@ public class CameraController : MonoBehaviour
 
        gridBg.transform.position = new Vector2(gridManager.gridHeight/2,gridManager.gridHeight/2);
 
+        gridBg.localScale = new Vector3(gridManager.gridWidth * 1.05f, gridManager.gridHeight * 1.05f, 1);
+
        transform.position =   new Vector3(gridManager.gridHeight/2,gridManager.gridHeight/2+1,-10);
 
 
