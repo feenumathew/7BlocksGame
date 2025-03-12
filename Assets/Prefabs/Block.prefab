@@ -78,7 +78,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 4
   m_Sprite: {fileID: 21300000, guid: 0a4c5547819564697be6c2725d32dbc8, type: 3}
-  m_Color: {r: 0.8867924, g: 0.8826094, b: 0.8826094, a: 1}
+  m_Color: {r: 0.78431374, g: 0.21960783, b: 0.65716666, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -114,8 +114,8 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 347538942942776245}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -0.06666666}
-  m_LocalScale: {x: 0.55162805, y: 0.55162805, z: 0.11032562}
+  m_LocalPosition: {x: 0, y: 0, z: -0.066666655}
+  m_LocalScale: {x: 0.551628, y: 0.551628, z: 0.11032562}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 287251664316250494}
@@ -273,9 +273,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7740533961284842873}
-  - component: {fileID: 4338814583093871039}
   - component: {fileID: 4276627320683349051}
   - component: {fileID: 6064350269349882550}
+  - component: {fileID: 4338814583093871039}
   m_Layer: 0
   m_Name: Block
   m_TagString: Untagged
@@ -299,22 +299,6 @@ Transform:
   - {fileID: 287251664316250494}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4338814583093871039
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6068555019305502442}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5b6a9c37015c445c7880c077be2b61a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  anim: {fileID: 4276627320683349051}
-  number: 0
-  blockPlaced: 0
-  audio: {fileID: 6064350269349882550}
 --- !u!95 &4276627320683349051
 Animator:
   serializedVersion: 7
@@ -434,3 +418,19 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &4338814583093871039
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6068555019305502442}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b6a9c37015c445c7880c077be2b61a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentCell: {fileID: 0}
+  blockPos: {x: 0, y: 0}
+  anim: {fileID: 4276627320683349051}
+  blockState: 0

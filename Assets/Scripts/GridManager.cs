@@ -6,92 +6,128 @@ using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
 
+public enum GridState
+{
+    Ready,
+    BlockMoving,
+    Clearing  
+}
+
 public class GridManager : MonoBehaviour
 {
-    public AudioSource audio;
-    public int gridWidth = 7;
-    public int gridHeight = 7;
-    public Transform[,] gridSquare;
+    public int gridWidth;
+    public int gridHeight;
+
+    public TwoKeyDictionary<int, int, GridCell> gridCells = new TwoKeyDictionary<int, int, GridCell>();
 
     public Transform gridBg;
     public GameObject highLightBG;
-    public DOTweenAnimation Tween;
 
-    // New: Reference to your grid cell prefab.
     public GameObject gridCellPrefab;
+
 
     private BlockSpawner blockSpawner;
 
     private List<BlockHighLight> blockHighLights = new List<BlockHighLight>();
 
+    private int successiveClears = 0;
 
-
-    void Start()
+    void Awake()
     {
         blockSpawner = FindFirstObjectByType<BlockSpawner>();
-        gridSquare = new Transform[gridWidth, gridHeight];
-        CreateVisibleGrid();
-        blockSpawner.CreateSpawnPoints(gridWidth, gridHeight);
+    }
+
+
+    public void SetupGrid()
+    {
+       
+        gridHeight = gridWidth = GameSettings.Instance.gridSize;
+
+        CreateGrid(0, gridHeight, 0, gridWidth); //creating playarea grid
+        CreateGrid(gridHeight+GameSettings.Instance.spawnPointVerticalOffsetUnits-1,1, 0, gridWidth, true); //creating spawn points grid
+        CreateGrid(gridHeight,GameSettings.Instance.spawnPointVerticalOffsetUnits-1,0,gridWidth,false); //creating top inbetween invisible grids
+        CreateGrid(-1 ,1, 0, gridWidth,false); //creating bottom water grid
+
+        blockSpawner.SetupSpawnPoints();
         gridBg.localScale = new Vector3(gridWidth * 1.05f, gridHeight * 1.05f, 1);
     }
 
-    // Instantiates the grid cell prefab at every cell coordinate.
-    void CreateVisibleGrid()
+
+
+    void CreateGrid(int yStart,int yCount, int xStart, int xCount, bool visible = true)
     {
-        for (int y = 0; y < gridHeight; y++)
+        for (int y = yStart; y < yStart+yCount; y++)
         {
-            for (int x = 0; x < gridWidth; x++)
+            for (int x = xStart; x < xStart+xCount ; x++)
             {
-                Vector3 cellPosition = new Vector3(x, y, 0);
-                Instantiate(gridCellPrefab, cellPosition, Quaternion.identity, transform);
+                Vector3 cellPosition = new Vector2(x, y);
+                gridCells.Add(x, y, Instantiate(gridCellPrefab, cellPosition, Quaternion.identity, transform).GetComponent<GridCell>());
+                gridCells[x, y].Initialize(x, y);
+                if(!visible)
+                    gridCells[x, y].HideGridGeaphic();
             }
         }
+        
+    }
+
+    public bool IsTopRowFull()
+    {
+        for (int x = 0; x < gridWidth; x++)
+        {
+            if (!gridCells[x, gridHeight-1].isOccupied)
+                return false;
+        }
+        return true;
+    }
+
+    public bool IsAnyBlocksOutOfGrid()
+    {
+        for (int x = 0; x < gridWidth; x++)
+        {
+           if (gridCells[x, gridHeight].isOccupied)
+                    return true;
+        }
+        return false;
     }
 
 
-
-    // Rounds a vector to the nearest integer values.
     public Vector2 RoundVector2(Vector2 v)
     {
         return new Vector2(Mathf.Round(v.x), Mathf.Round(v.y));
     }
 
-    // Check if a position is inside the grid.
-    public bool InsideGrid(Vector2 pos)
+    public bool InsideGrid(GridCell cell)
     {
-        return ((int)pos.x >= 0 && (int)pos.x < gridWidth && (int)pos.y >= 0);
+        return (cell.gridPos.x >= 0 && cell.gridPos.x < gridWidth && cell.gridPos.y >= 0 && cell.gridPos.y < gridHeight);
     }
 
-    public void AddToGrid(Transform block)
-    {
-        Vector2 pos = RoundVector2(block.position);
-        gridSquare[(int)pos.x, (int)pos.y] = block;
-        CheckAndClear();
-    }
 
     public void CheckAndClear()
     {
-       
-        List<Transform> blocksToClear = new List<Transform>();
+
+        List<Block> blocksToClear = new List<Block>();
+        List<WaterBlock> waterBlocksToBreak = new List<WaterBlock>();
 
         for (int x = 0; x < gridWidth; x++)
         {
             for (int y = 0; y < gridHeight; y++)
             {
-                if (gridSquare[x, y] != null)
+                if (gridCells[x, y].isOccupied)
                 {
-                    Block blockComponent = gridSquare[x, y].GetComponent<Block>();
-                    int horizontalUBBlocks = CountHorizontalUB(x, y);
-                    int verticalUBBLocks = CountVerticalUB(x, y);
-                    if (blockComponent.number == horizontalUBBlocks)
+                    Block block = gridCells[x, y].block;
+                    List<Block> horizontalUBBlocks = CountHorizontalUB(x, y);  //UB Stands for unbroken blocks
+                    List<Block> verticalUBBlocks = CountVerticalUB(x, y);
+                    if (block.Number == horizontalUBBlocks.Count)
                     {
-                        blocksToClear.Add(gridSquare[x, y]);
-                        AddHorizontalUBHighlight(x, y, horizontalUBBlocks);
+                        blocksToClear.Add(block);
+                        AddHorizontalUBHighlight(x, y, horizontalUBBlocks.Count);
+                        waterBlocksToBreak =  CheckForWaterBlocks(horizontalUBBlocks);
                     }
-                    else if( blockComponent.number == verticalUBBLocks)
+                    else if (block.Number == verticalUBBlocks.Count)
                     {
-                        blocksToClear.Add(gridSquare[x, y]);
-                        AddVerticalUBHighlight(x, y, verticalUBBLocks);
+                        blocksToClear.Add(block);
+                        AddVerticalUBHighlight(x, y, verticalUBBlocks.Count);
+                        waterBlocksToBreak =  waterBlocksToBreak.Concat(CheckForWaterBlocks(verticalUBBlocks)).ToList();
                     }
                 }
             }
@@ -99,138 +135,212 @@ public class GridManager : MonoBehaviour
 
         if (blocksToClear.Count > 0)
         {
-            StartCoroutine(ClearCoRo(blocksToClear));
-            audio.Play();
-            Tween.DORestart();
+            StartCoroutine(ClearBlocksCoRo(blocksToClear,waterBlocksToBreak));
+            AudioManager.Instance.PlaySFX("mixkit-game-ball-tap-2073",.5f);
         }
         else
         {
-            blockSpawner.SpawnBlock();
+            successiveClears = 0;
+            blockSpawner.StartSpawningBlock();
         }
-
     }
+
+    List<WaterBlock> CheckForWaterBlocks(List<Block> blocks)
+    {
+        List<WaterBlock> waterBlocks = new List<WaterBlock>();
+        foreach (Block block in blocks)
+        {
+            if (block.GetType() == typeof(WaterBlock))
+            {
+                WaterBlock waterBlock = (WaterBlock)block;
+                waterBlocks.Add(waterBlock);
+            }
+        }
+        return waterBlocks;
+    }
+
+
 
     void AddHorizontalUBHighlight(int x, int y, int horizontalUBCount)
     {
-         Vector2 center = new Vector2(x,y);
-        int startIndex ;
+        Vector2 center = new Vector2(x, y);
+        int startIndex;
         for (startIndex = x; startIndex >= 0; startIndex--)
         {
-            if (gridSquare[startIndex,y] == null)
+            if (!gridCells[startIndex, y].isOccupied)
                 break;
         }
         startIndex++;
-        center = new Vector2(startIndex + (horizontalUBCount - 1) / 2f,y);
-         if (blockHighLights.Count == 0 || 
-         !blockHighLights.Any(a => a.center == center && a.horizontalUBCount == horizontalUBCount &&
-          a.verticalUBCount == 1))
+        center = new Vector2(startIndex + (horizontalUBCount - 1) / 2f, y);
+        if (blockHighLights.Count == 0 ||
+        !blockHighLights.Any(a => a.center == center && a.horizontalUBCount == horizontalUBCount &&
+         a.verticalUBCount == 1))
         {
             BlockHighLight blockHighLight = Instantiate(highLightBG).GetComponent<BlockHighLight>();
-            blockHighLight.Setup(center,horizontalUBCount,1);
+            blockHighLight.Setup(center, horizontalUBCount, 1);
             blockHighLights.Add(blockHighLight);
         }
     }
 
-   void AddVerticalUBHighlight(int x, int y, int verticalUBCount)
+    void AddVerticalUBHighlight(int x, int y, int verticalUBCount)
     {
-         Vector2 center = new Vector2(x,y);
+        Vector2 center = new Vector2(x, y);
         int startIndex;
         for (startIndex = y; startIndex >= 0; startIndex--)
         {
-            if (gridSquare[x,startIndex] == null)
+            if (gridCells[x, startIndex] == null)
                 break;
         }
         startIndex++;
-        center = new Vector2(x,startIndex + (verticalUBCount - 1) / 2f);
-         if (blockHighLights.Count == 0 || 
-         !blockHighLights.Any(a => a.center == center && a.horizontalUBCount == 1 &&
-          a.verticalUBCount == verticalUBCount))
+        center = new Vector2(x, startIndex + (verticalUBCount - 1) / 2f);
+        if (blockHighLights.Count == 0 ||
+        !blockHighLights.Any(a => a.center == center && a.horizontalUBCount == 1 &&
+         a.verticalUBCount == verticalUBCount))
         {
             BlockHighLight blockHighLight = Instantiate(highLightBG).GetComponent<BlockHighLight>();
-            blockHighLight.Setup(center,1,verticalUBCount);
+            blockHighLight.Setup(center, 1, verticalUBCount);
             blockHighLights.Add(blockHighLight);
         }
     }
 
-    IEnumerator ClearCoRo(List<Transform> blocksToClear)
+    IEnumerator ClearBlocksCoRo(List<Block> blocksToClear,List<WaterBlock> waterBlocksToBreak)
     {
-        foreach(BlockHighLight blockHighLight in blockHighLights)
+        foreach (BlockHighLight blockHighLight in blockHighLights)
             blockHighLight.EnableHighLight();
         yield return new WaitForSeconds(.4f);
-        foreach (Transform t in blocksToClear)
-        {
-            Vector2 pos = RoundVector2(t.position);
-            gridSquare[(int)pos.x, (int)pos.y] = null;
-            Destroy(t.gameObject);
-        }
-        foreach(BlockHighLight blockHighLight in blockHighLights)
+        
+        foreach (BlockHighLight blockHighLight in blockHighLights)
             blockHighLight.DestroyHighLight();
         blockHighLights.Clear();
+
+        int scoreForClear = GameSettings.Instance.blockClearBasePoints * (int)Mathf.Pow(GameSettings.Instance.blockClearScoreMultiplier, successiveClears);
+
+        foreach (Block block in blocksToClear)
+        {
+            block.ClearBlock(scoreForClear);
+        }
+        foreach (WaterBlock waterBlock in waterBlocksToBreak)
+        {
+            waterBlock.BreakWaterBlock();
+        }
+        successiveClears++;
         StartCoroutine(UpdateGridAfterClear());
 
     }
 
-    int CountHorizontalUB(int x, int y)
+    List<Block> CountHorizontalUB(int x, int y)
     {
 
-        int count = 0;
+        List<Block> blocks = new List<Block>();
         for (int i = x; i >= 0; i--)
         {
-            if (gridSquare[i, y] == null)
+            if (gridCells[i, y].isOccupied == false)
                 break;
-            count++;
+            blocks.Add(gridCells[i, y].block);
         }
         for (int i = x + 1; i < gridWidth; i++)
         {
-            if (gridSquare[i, y] == null)
+            if (gridCells[i, y].isOccupied == false)
                 break;
-            count++;
+            blocks.Add(gridCells[i, y].block);
         }
-        return count;
+        return blocks;
     }
 
-    int CountVerticalUB(int x, int y)
+    List<Block> CountVerticalUB(int x, int y)
     {
-        int count = 0;
+
+        List<Block> blocks = new List<Block>();
         for (int i = y; i >= 0; i--)
         {
-            if (gridSquare[x, i] == null)
+            if (gridCells[x, i].isOccupied == false)
                 break;
-            count++;
+            blocks.Add(gridCells[x, i].block);
         }
         for (int i = y + 1; i < gridHeight; i++)
         {
-            if (gridSquare[x, i] == null)
+            if (gridCells[x, i].isOccupied == false)
                 break;
-            count++;
+            blocks.Add(gridCells[x, i].block);
         }
-        return count;
+        return blocks;
     }
 
     IEnumerator UpdateGridAfterClear()
+
     {
         yield return null;
         bool gridUpdate = true;
+        Dictionary<Block, GridCell> toBeMovedBlocks = new Dictionary<Block, GridCell>();
         while (gridUpdate)
         {
             gridUpdate = false;
+
             for (int x = 0; x < gridWidth; x++)
             {
                 for (int y = 1; y < gridHeight; y++)
                 {
-                    if (gridSquare[x, y] != null && gridSquare[x, y - 1] == null)
+                    if (gridCells[x, y].isOccupied && !gridCells[x, y - 1].isOccupied)
                     {
                         gridUpdate = true;
-                        gridSquare[x, y - 1] = gridSquare[x, y];
-                        gridSquare[x, y] = null;
-                        gridSquare[x, y - 1].position += new Vector3(0, -1, 0);
+                        if (!toBeMovedBlocks.ContainsKey(gridCells[x, y].block))
+                            toBeMovedBlocks.Add(gridCells[x, y].block, gridCells[x, y]);
+                        gridCells[x, y].block.BlockPlaced(gridCells[x, y - 1]);
                     }
                 }
             }
-        }
 
-        CheckAndClear();
+        }
+        int blocksToMove = toBeMovedBlocks.Count;
+
+        if (blocksToMove == 0)
+        {
+            CheckAndClear();
+        }
+        else
+        {
+            foreach (KeyValuePair<Block, GridCell> block in toBeMovedBlocks)
+            {
+                GridCell finalGridCell = block.Key.currentCell;
+                block.Key.BlockPlaced(block.Value);
+                block.Key.MoveBlock(finalGridCell, GameSettings.Instance.blockFallSpeedNormal, () =>
+                {
+                    blocksToMove--;
+                    if (blocksToMove == 0)
+                    {
+                        CheckAndClear();
+                    }
+                });
+            }
+        }
     }
+
+    public void MoveAllBlocksUp()
+    {
+        StartCoroutine(MoveAllBlocksUpCoRo());
+    }
+
+    IEnumerator MoveAllBlocksUpCoRo()
+    {
+        yield return new WaitForSeconds(.2f);
+
+        for (int x = 0; x < gridWidth; x++)
+        {
+            for (int y = gridHeight - 1; y >= -1; y--)
+            {
+                if (gridCells[x, y].isOccupied)
+                {
+                    gridCells[x, y].block.MoveBlock(gridCells[x, y + 1], 2f);
+                }
+            }
+        }
+        yield return new WaitForSeconds( 1/2f);
+        if(IsAnyBlocksOutOfGrid())
+            GameManager.Instance.GameOver();
+        else
+            CheckAndClear();
+    }
+
 }
 
 

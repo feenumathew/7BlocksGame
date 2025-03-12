@@ -5,31 +5,102 @@ public class BlockSpawner : MonoBehaviour
 {
     public GameObject blockPrefab;  // Assign your block prefab in the Inspector.
 
-     public GameObject gridPrefab; 
-    public Transform spawnPointParent;
-    public List<Transform> spawnPoints;    // A Transform positioned at the top-center of your grid.
+    public GameObject waterBlockPrefab;
+    public GameObject gridPrefab;
+    public Transform top;
+    public List<GridCell> topSpawnPoints;    // spawnPoints positioned at the top-center of your grid.
 
-    void Start()
+    public List<GridCell> bottomSpawnPoints;  
+    public int blockSpawnCount = 0;
+
+    private GridManager gridManager;
+    private int width;
+    private int height;
+
+    private void Awake()
     {
-        SpawnBlock();
+        topSpawnPoints = new List<GridCell>();
+        bottomSpawnPoints = new List<GridCell>();
+        gridManager = FindFirstObjectByType<GridManager>();
+        width = GameSettings.Instance.gridSize;
+        height = GameSettings.Instance.gridSize;
     }
 
-    public void CreateSpawnPoints(int width,int height)
+
+
+    public void SetupSpawnPoints()
     {
-        for(int i=height+2,j = 0;j<width;j++)
+        for (int i = 0, j = height + GameSettings.Instance.spawnPointVerticalOffsetUnits - 1; i < width; i++)
         {
-            Transform spawnPoint = Instantiate(gridPrefab,new Vector3(j,i,0),Quaternion.identity).transform;
-            spawnPoints.Add(spawnPoint);
-            spawnPoint.parent = spawnPointParent;
+            topSpawnPoints.Add(gridManager.gridCells[i, j]);
+        }
+        for (int i = 0, j = -1; i < width; i++)
+        {
+            bottomSpawnPoints.Add(gridManager.gridCells[i, j]);
         }
     }
     // Call this method to spawn a new block.
-    public void SpawnBlock()
+
+
+    public void StartSpawningBlock()
     {
-        int r = Random.Range(0,spawnPoints.Count);
-        GameObject blockObj = Instantiate(blockPrefab,  spawnPoints[r].position, Quaternion.identity);
-        Block block = blockObj.GetComponent<Block>();
-        // Random number from 1 to 7.
-        block.Initialize(Random.Range(1, 8));
+        blockSpawnCount++;
+
+        if (blockSpawnCount % GameSettings.Instance.levelIncreaseGap == 0)
+        {
+            GameManager.Instance.IncreaseLevel();
+            SpawnBottomWaterBlocks();
+            gridManager.MoveAllBlocksUp();
+        }
+        else
+        {
+            if(gridManager.IsTopRowFull())
+            {
+                GameManager.Instance.GameOver();
+            }
+            else
+            {
+                SpawnBlock();
+            }
+        }
+
+
     }
+
+    void SpawnBottomWaterBlocks()
+    {
+        int blockNum;
+        for (int i = 0; i < width; i++)
+        {
+            blockNum = Helper.GenerateWeightedRandom("RandomBlockNumber", 1, GameSettings.Instance.gridSize);
+            GameObject blockObj = Instantiate(waterBlockPrefab, (Vector2)bottomSpawnPoints[i].gridPos, Quaternion.identity);
+            WaterBlock block = blockObj.GetComponent<WaterBlock>();
+            block.Initialize(blockNum, bottomSpawnPoints[i]);
+        }
+    }
+
+    private void SpawnBlock()
+    {
+        int r = Helper.GenerateWeightedRandom("RandomSpawnPosition", 0, topSpawnPoints.Count - 1);
+        int blockNum = Helper.GenerateWeightedRandom("RandomBlockNumberWithWater", 0, GameSettings.Instance.gridSize);
+        GridCell initialCell = topSpawnPoints[r];
+        GameObject blockObj;
+        if (blockNum == 0)
+        {
+            blockNum = Helper.GenerateWeightedRandom("RandomBlockNumber", 1, GameSettings.Instance.gridSize);
+            blockObj = Instantiate(waterBlockPrefab, (Vector2)initialCell.gridPos, Quaternion.identity);
+        }
+        else
+        {
+            blockObj = Instantiate(blockPrefab, (Vector2)initialCell.gridPos, Quaternion.identity);
+        }
+
+        Block block = blockObj.GetComponent<Block>();
+
+        block.Initialize(blockNum, initialCell);
+    }
+
+
+
+
 }

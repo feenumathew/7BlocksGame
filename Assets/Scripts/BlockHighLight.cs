@@ -33,49 +33,8 @@ public class BlockHighLight : MonoBehaviour
 
     void SetColor(int num)
     {
-        switch(num)
-        {
-            case 1:
-            {
-                spriteRenderer.color = Color.black;
-                break;
-            }
-            case 2:
-            {
-                spriteRenderer.color = Color.gray;
-                break;
-            }
-            case 3:
-            {
-                spriteRenderer.color = Color.red;
-                break;
-            }
-            case 4:
-            {
-                spriteRenderer.color = Color.yellow;
-                break;
-            }
-            case 5:
-            {
-                spriteRenderer.color = Color.magenta;
-                break;
-            }
-            case 6:
-            {
-                spriteRenderer.color = Color.green;
-                break;
-            }
-            case 7:
-            {
-                spriteRenderer.color = Color.blue;
-                break;
-            }
-            default:
-            {
-                spriteRenderer.color = Color.cyan;
-                break;
-            }
-        }
+        spriteRenderer.color = Block.ColorForNum(num);
+       
     }
 
 }

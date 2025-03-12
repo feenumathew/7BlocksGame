@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: dd4c2ae01c780194fa69e17a62c9dd14
+guid: e2384d07343a5425894a13993253f110
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -3257364189679268823
-    second: layoutAsset 1_0
+      213: -3045048262263894283
+    second: water_cracked_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -96,17 +96,30 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: layoutAsset 1_0
+      name: water_cracked_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 24
-        height: 24
+        width: 500
+        height: 500
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 92cc61a17848bc2d0800000000000000
-      internalID: -3257364189679268823
+      spriteID: 5fe07d32db0ddb5d0800000000000000
+      internalID: -3045048262263894283
       vertices: []
       indices: 
       edges: []

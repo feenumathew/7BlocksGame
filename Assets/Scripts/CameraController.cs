@@ -5,9 +5,11 @@ using UnityEngine;
 public class CameraController : MonoBehaviour
 {
     private Camera cam;
-    float refAspectRatio = .56f;//for 1920*1080 size
+    private float refAspectRatio = .56f;//for 1920*1080 size
 
     private GridManager gridManager;
+
+    public Transform gridBg;
 
     void Start()
     {
@@ -22,8 +24,14 @@ public class CameraController : MonoBehaviour
         if (camSize > 8)
             cam.orthographicSize = camSize;
 
+        
 
-        cam.orthographicSize = Mathf.Max(gridManager.gridWidth / (2 * cam.aspect),gridManager.gridHeight / 2) + 2f;
+
+       cam.orthographicSize = Mathf.Max(gridManager.gridWidth / (2 * cam.aspect),gridManager.gridHeight / 2) + 2f;
+
+       gridBg.transform.position = new Vector2(gridManager.gridHeight/2,gridManager.gridHeight/2);
+
+       transform.position =   new Vector3(gridManager.gridHeight/2,gridManager.gridHeight/2+1,-10);
 
 
     }

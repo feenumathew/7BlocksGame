@@ -1,206 +1,301 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using UnityEngine.EventSystems;
+using System;
 
 public class Block : MonoBehaviour
 {
-
     private GridManager gridManager;
+
     private BlockSpawner blockSpawner;
 
-    private TextMeshPro numberText;
+    private UIManager uIManager;
+    protected TextMeshPro numberText;
+    protected SpriteRenderer spriteRenderer;
 
-    private SpriteRenderer spriteRenderer;
+    private bool overUI;
+
+    private int spawnPointIndex = 0;
+
+    public GridCell currentCell = null;
+
+    public Vector2Int blockPos;
     public Animator anim;
-   
-    public int number;
-
-    public bool blockPlaced = false;
-    public AudioSource audio;
+    private int _number;
+    public BlockState blockState = BlockState.Spawned;
 
 
-    void Setup()
+    public virtual int Number
     {
-        gridManager = FindObjectOfType<GridManager>();
-        blockSpawner = FindObjectOfType<BlockSpawner>();
-        numberText = GetComponentInChildren<TextMeshPro>();
-        spriteRenderer = GetComponentInChildren<SpriteRenderer>();
-
+        get
+        {
+            return _number;
+        }
+        set
+        {
+            _number = value;
+        }
     }
 
-    public void Initialize(int num)
+    protected void Setup()
+    {
+        gridManager = FindFirstObjectByType<GridManager>();
+        blockSpawner = FindFirstObjectByType<BlockSpawner>();
+        uIManager = FindFirstObjectByType<UIManager>();
+        numberText = GetComponentInChildren<TextMeshPro>();
+        spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+    }
+
+    public virtual void Initialize(int num, GridCell gridCell)
     {
         Setup();
         SetNumber(num);
         SetColor(num);
+        SpawnedBlockMoved(gridCell);
     }
+
+    public void SpawnedBlockMoved(GridCell gridCell)
+    {
+        ClearGridCell();
+        spawnPointIndex = gridCell.gridPos.x;
+        currentCell = gridCell;
+        blockPos = gridCell.gridPos;
+        transform.position = (Vector2)blockPos;
+        gridCell.AddBlock(this);
+    }
+
+    public void BlockPlaced(GridCell gridCell)
+    {
+        ClearGridCell();
+        blockState = BlockState.Placed;
+        currentCell = gridCell;
+        blockPos = gridCell.gridPos;
+        transform.position = (Vector2)blockPos;
+        gridCell.AddBlock(this);
+    }
+
+    public void ClearGridCell()
+    {
+        if (currentCell != null)
+        {
+            currentCell.RemoveBlock();
+        }
+        currentCell = null;
+    }
+
+    public void ClearBlock(int scoreForClear)
+    {
+        uIManager.ShowScore(transform.position, scoreForClear, ColorForNum(Number));
+        ClearGridCell();
+        Destroy(gameObject);
+    }
+
 
     // Call this to initialize the block’s number.
     public void SetNumber(int num)
     {
-        number = num;
+        Number = num;
         if (numberText != null)
             numberText.text = num.ToString();
-       
     }
 
-    void SetColor(int num)
+    protected void SetColor(int num)
     {
-        switch(num)
+        if (spriteRenderer != null)
+            spriteRenderer.color = ColorForNum(num);
+    }
+    public static Color ColorForNum(int num)
+    {
+        Color color = Color.magenta;
+        switch (num)
         {
             case 1:
-            {
-                spriteRenderer.color = Color.black;
+                ColorUtility.TryParseHtmlString("#222222", out color);
                 break;
-            }
             case 2:
-            {
-                spriteRenderer.color = Color.gray;
+                ColorUtility.TryParseHtmlString("#95999B", out color);
                 break;
-            }
             case 3:
-            {
-                spriteRenderer.color = Color.red;
+                ColorUtility.TryParseHtmlString("#BA2926", out color);
                 break;
-            }
             case 4:
-            {
-                spriteRenderer.color = Color.yellow;
+                ColorUtility.TryParseHtmlString("#DCA402", out color);
                 break;
-            }
             case 5:
-            {
-                spriteRenderer.color = Color.magenta;
+                ColorUtility.TryParseHtmlString("#694180", out color);
                 break;
-            }
             case 6:
-            {
-                spriteRenderer.color = Color.green;
+                ColorUtility.TryParseHtmlString("#02BB52", out color);
                 break;
-            }
             case 7:
-            {
-                spriteRenderer.color = Color.blue;
+                ColorUtility.TryParseHtmlString("#387CC8", out color);
                 break;
-            }
             default:
-            {
-                spriteRenderer.color = Color.cyan;
                 break;
+        }
+        return color;
+    }
+
+    void Update()
+    {
+        if (blockState != BlockState.Spawned || (!blockSpawner.topSpawnPoints.Contains(currentCell)))
+            return;
+
+        // If running on mobile, process touch input for horizontal dragging.
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+
+            if (EventSystem.current.IsPointerOverGameObject(touch.fingerId))
+            {
+                overUI = true;
+                return;
+            }
+
+
+            if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
+            {
+
+                Vector2 touchWorldPos = Camera.main.ScreenToWorldPoint(touch.position);
+                int targetX = (int)Mathf.Round(touchWorldPos.x);
+                targetX = Mathf.Clamp(targetX, 0, gridManager.gridWidth - 1);
+                SpawnedBlockMoved(blockSpawner.topSpawnPoints[targetX]);
+            }
+            if (touch.phase == TouchPhase.Ended)
+            {
+                if (overUI)
+                {
+                    overUI = false;
+                }
+                else
+                {
+                    MoveDown();
+                   
+                }
+
+            }
+        }
+        // Otherwise, use keyboard input (useful for testing in the Editor).
+        else
+        {
+
+            if (Input.GetKeyDown(KeyCode.LeftArrow))
+            {
+                spawnPointIndex = Mathf.Clamp(spawnPointIndex - 1, 0, gridManager.gridWidth - 1);
+                SpawnedBlockMoved(blockSpawner.topSpawnPoints[spawnPointIndex]);
+
+            }
+            else if (Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                spawnPointIndex = Mathf.Clamp(spawnPointIndex + 1, 0, gridManager.gridWidth - 1);
+                SpawnedBlockMoved(blockSpawner.topSpawnPoints[spawnPointIndex]);
+            }
+            else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                MoveDown();
             }
         }
     }
-   
 
-   void Update()
-{
-    if (blockPlaced)
-        return;
-
-    // If running on mobile, process touch input for horizontal dragging.
-    if (Input.touchCount > 0)
-    {
-        Touch touch = Input.GetTouch(0);
-
-        // When the finger moves or is stationary, update the block's x-position.
-        if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
-        {
-            // Convert the touch position from screen space to world space.
-            Vector2 touchWorldPos = Camera.main.ScreenToWorldPoint(touch.position);
-            // Round the x-coordinate to snap to grid columns.
-            float targetX = Mathf.Round(touchWorldPos.x);
-            // Clamp the target x to valid grid columns.
-            targetX = Mathf.Clamp(targetX, 0, gridManager.gridWidth - 1);
-            // Update the block's horizontal position while preserving its current y.
-            transform.position = new Vector3(targetX, transform.position.y, transform.position.z);
-        }
-        
-        // Optionally, you can trigger a drop if the touch ends quickly (a tap).
-        if (touch.phase == TouchPhase.Ended)
-        {
-            // For example, if the finger didn’t move much, treat it as a drop command.
-            // (You can implement a tap-detection threshold if desired.)
-            MoveDown();
-        }
-    }
-    // Otherwise, use keyboard input (useful for testing in the Editor).
-    else
-    {
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
-        {
-            transform.position += new Vector3(-1, 0, 0);
-            if (!IsValidCol())
-                transform.position += new Vector3(1, 0, 0);
-        }
-        else if (Input.GetKeyDown(KeyCode.RightArrow))
-        {
-            transform.position += new Vector3(1, 0, 0);
-            if (!IsValidCol())
-                transform.position += new Vector3(-1, 0, 0);
-        }
-        else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-        {
-            MoveDown();
-        }
-    }
-}
-
-
-    bool IsValidCol()
-    {
-         Vector2 pos = gridManager.RoundVector2(transform.position);
-         return ((int)pos.x >= 0 && (int)pos.x < gridManager.gridWidth);
-    }
 
     // Move the block down by one unit.
     void MoveDown()
     {
-        audio.Play();
-        blockPlaced = true;
-        //
-        Vector3 finalPos = transform.position;
-        
-        finalPos = new Vector3(transform.position.x,gridManager.gridHeight-1,0);
 
-        while (IsValidPosition(finalPos))
+
+        GridCell finalGridCell = gridManager.gridCells[blockPos.x, gridManager.gridHeight - 1]; //Setting the first available cell
+
+        Vector2Int finalPos = finalGridCell.gridPos;
+
+        while (IsValidGrid(finalGridCell))
         {
-            finalPos += new Vector3(0, -1, 0);
+            finalPos.y--;
+
+            if (finalPos.y < 0)
+            {
+                break;
+            }
+            finalGridCell = gridManager.gridCells[finalPos.x, finalPos.y];
         }
 
-        finalPos += new Vector3(0, 1, 0);
-        StartCoroutine(BlockPlacing(finalPos));
-       
+        finalGridCell = gridManager.gridCells[finalPos.x, finalPos.y + 1];
+
+        if (IsValidGrid(finalGridCell))
+        {
+            blockState = BlockState.Moving;
+            StartCoroutine(BlockPlacing(finalGridCell));
+        }
+
     }
 
-    IEnumerator BlockPlacing(Vector3 finalPos)
+    IEnumerator BlockPlacing(GridCell finalGridCell)
     {
-        float t=0;
-        Vector3 initPos = transform.position;
-        float distance = initPos.y - finalPos.y;
-        Debug.Log("distance"+distance);
-        while(t<1)
+
+        yield return StartCoroutine(MoveBlockCoro(finalGridCell,GameSettings.Instance.blockFallSpeedInit));
+       
+        yield return StartCoroutine(AnimationWait("BlockMove"));
+
+        gridManager.CheckAndClear();
+
+    }
+
+
+    public void MoveBlock(GridCell finalGridCell, float speed,Action callback = null)
+    {
+        StartCoroutine(MoveBlockCoro(finalGridCell, speed,callback));
+    }
+
+    public IEnumerator MoveBlockCoro(GridCell finalGridCell, float speed,Action callback = null)
+    {
+         float t = 0;
+        Vector2 initPos  = currentCell.gridPos;
+        Vector2 finalPos = finalGridCell.gridPos;
+        float distance = Mathf.Abs(finalPos.y - initPos.y);
+        while (t < 1)
         {
-            t += Time.deltaTime*2f*(9f/distance);
-            transform.position = Vector3.Lerp(initPos,finalPos,t); 
+            t += Time.deltaTime * speed/distance;
+            transform.position = Vector2.Lerp(initPos, finalPos, t);
             yield return null;
         }
         transform.position = finalPos;
-        gridManager.AddToGrid(transform);
-        
-        anim.SetTrigger("Bounce");
+        BlockPlaced(finalGridCell);
+        callback?.Invoke();
     }
 
-    // Check if the block is in a valid position (inside the grid and not overlapping another block).
-    bool IsValidPosition(Vector3 pos)
+
+
+    IEnumerator AnimationWait(string animationState)
     {
-        pos = gridManager.RoundVector2(pos);
-        if (!gridManager.InsideGrid(pos))
+        anim.Play(animationState,0);
+        yield return new WaitUntil(() => anim.GetCurrentAnimatorStateInfo(0).IsName(animationState));
+        while (anim.GetCurrentAnimatorStateInfo(0).normalizedTime < .9f)
+        {
+            yield return null;
+        }
+        
+    }
+
+
+
+    // Check if the block is in a valid position (inside the grid and not overlapping another block).
+    bool IsValidGrid(GridCell gridCell)
+    {
+        if (!gridManager.InsideGrid(gridCell))
             return false;
 
         // Check if the grid cell is already occupied.
-        if (gridManager.gridSquare[(int)pos.x, (int)pos.y] != null)
+        if (gridCell.isOccupied)
             return false;
 
         return true;
     }
+}
+
+public enum BlockState
+{
+
+    Spawned,
+    Moving,
+    Placed
 }
